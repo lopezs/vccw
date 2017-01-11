@@ -9,7 +9,7 @@ wp_box: vccw-team/xenial64
 #
 # Virtual Machine Settings
 #
-memory: 512
+memory: 1024
 cpus: 1
 
 #
@@ -22,8 +22,8 @@ ip: 192.168.33.10
 # WordPress Settings
 #
 version: latest
-lang: en_US
-title: Welcome to the VCCW
+lang: en_GB
+title: Welcome to the VCCWLS
 multisite: false
 rewrite_structure: /archives/%post_id%
 
@@ -66,7 +66,7 @@ theme: ''
 # WordPress Options
 #
 options:
-  blogdescription: Hello VCCW.
+  blogdescription: Hello VCCWLS.
 
 #
 # WordPress Multisite Options
@@ -157,7 +157,7 @@ php_ini:
   xdebug.remote_host: 127.0.0.1
   xdebug.remote_port: 9000
   xdebug.profiler_enable: true
-  xdebug.idekey: VCCWDEBUG
+  xdebug.idekey: PHPSTORM
   xdebug.remote_connect_back: true
   xdebug.remote_autostart: true
 
