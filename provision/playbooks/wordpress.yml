@@ -1,6 +1,8 @@
+---
 - hosts: all
   vars:
     path: "{{ vccw.document_root }}/{{ vccw.wp_siteurl }}"
+    user: "{{ ansible_env.USER | default( 'ubuntu' ) }}"
 
   tasks:
 
@@ -19,12 +21,26 @@
       host: "%"
       state: present
 
+  - name: "Change owner of the {{ path }}"
+    become: yes
+    file:
+      path: "{{ path }}"
+      state: directory
+      owner: "{{ user }}"
+      group: "{{ user }}"
+      mode: 0755
+      recurse: yes
+
+  - name: "Remove index.html from document root"
+    become: yes
+    file:
+      path: "{{ path }}/index.html"
+      state: absent
   # download wordpress
   - name: Run `wp core download`
     command: |
       wp core download
       --path={{ path }}
-      --locale={{ vccw.lang }}
       --version={{ vccw.version }}
       --force
 
@@ -80,6 +96,11 @@
   - name: Move `.gitignore`
     command: "mv /tmp/.gitignore {{ path }}/.gitignore"
 
+  - name: Run `wp core language install`
+    command: |
+      wp core language install {{ vccw.lang }}
+      --path={{ path }}
+      --activate
   # Install Plugins
   - name: Run `wp plugin install`
     command: |
@@ -87,11 +108,33 @@
       --activate
       --path={{ path }}
     with_items: "{{ vccw.plugins | default([]) }}"
+  # Install wp-multibyte-patch
+  - name: Run `wp plugin install wp-multibyte-patch`
+    command: |
+      wp plugin install wp-multibyte-patch
+      --activate
+      --path={{ path }}
+    when: vccw.lang == 'ja'
+
+  # Check exsist Theme
+  - name: Run `wp theme is-installed`
+    command: |
+      wp theme is-installed {{ vccw.theme }}
+      --path={{ path }}
+    register: theme_is_installed
+    ignore_errors: True
+    when: vccw.theme != ''
 
   # Install Theme
   - name: Run `wp theme install`
     command: |
       wp theme install {{ vccw.theme }}
+      --path={{ path }} --activate
+    when: vccw.theme != '' and theme_is_installed.stdout == "1"
+
+  - name: Run `wp theme activate`
+    command: |
+      wp theme activate {{ vccw.theme }}
       --path={{ path }}
     when: vccw.theme != ''
 
@@ -121,6 +164,26 @@
       wp option update {{ item.key }} '{{ item.value }}'
       --path={{ path }}
     with_dict: "{{ vccw.options }}"
+  # Localization
+  - name: Get the timezone
+    command: |
+      wp eval "echo _x( '0', 'default GMT offset or timezone string' );"
+      --path={{ path }}
+    register: timezone
+  - name: Update timezone
+    command: |
+      wp option update timezone_string '{{ timezone.stdout }}'
+      --path={{ path }}
+
+  - name: Get the date format
+    command: |
+      wp eval "echo __( 'M jS Y' );"
+      --path={{ path }}
+    register: date_format
+  - name: Update date format
+    command: |
+      wp option update date_format '{{ date_format.stdout }}'
+      --path={{ path }}
 
   # Setting Permalink
   - name: Run `wp rewrite structure`
